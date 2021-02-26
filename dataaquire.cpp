@@ -118,7 +118,7 @@ void DataAquire::doMyWork()
            }
             if(num == 64)
             {
-                emit dataREADY(dataArry);
+                emit dataREADY(dataArry,64);
                 num=0;
             }
 
@@ -128,7 +128,7 @@ void DataAquire::doMyWork()
 
             //printf("\n");
         }
-        QThread::sleep(1);
+        QThread::sleep(2);
         if(isStop)
             break;
     }

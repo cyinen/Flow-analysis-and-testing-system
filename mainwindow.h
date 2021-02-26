@@ -25,8 +25,8 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void init();
-    void showWaves(float * dataArry);
-    void showSpectrum(float * dataArry);
+    void showWaves(float * dataArry,int N);
+    void showSpectrum(float * dataArry,int N);
     void setupPlot();//初始化
 
 private slots:

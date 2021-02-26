@@ -24,7 +24,7 @@ protected:
     HANDLE hDevice = INVALID_HANDLE_VALUE;
     float dataArry[1024];
 signals:
-    void dataREADY(float *);
+    void dataREADY(float *,int);
 public slots:
 private:
     volatile bool isStop;

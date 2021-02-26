@@ -21,7 +21,7 @@ public:
     std::complex<float> Wn(int k, int n, int N);
     bool setN(int N);
 signals:
-    void sigDATA(float * );
+    void sigDATA(float *,int );
 public slots:
     //void slotSetData(float* arry);
 private:

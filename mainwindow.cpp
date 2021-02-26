@@ -44,59 +44,53 @@ void MainWindow::init()
     da->moveToThread(pthread);
     connect(this, &MainWindow::sigWorking, da, &DataAquire::doMyWork);
 
-    void (DataAquire::*dataREADY)(float * ) = &DataAquire::dataREADY;
+    void (DataAquire::*dataREADY)(float * ,int) = &DataAquire::dataREADY;
     connect(da,dataREADY,this,&MainWindow::showWaves);
 
     fft = new FFT();
     fftthread = new QThread(this);
     fft->moveToThread(fftthread);
-    connect(this, &MainWindow::sigDdtaReady, fft, &FFT::doMyWork);
-    void (FFT::*sigDATA)(float []) = &FFT::sigDATA;
+    connect(da, dataREADY, fft, &FFT::doMyWork);
+    void (FFT::*sigDATA)(float [],int) = &FFT::sigDATA;
     connect(fft,sigDATA,this,&MainWindow::showSpectrum);
 
 
 }
 
-void MainWindow::showWaves(float * dataArry)
+void MainWindow::showWaves(float * dataArry,int N)
 {
-    emit sigDdtaReady(dataArry,64);
     qDebug()<<"开始处理";
-
+    static double m=0;
     int n=0;
-    while(n<64)
+    while(n<N)
     {
-        mycurrenttime = QDateTime::currentDateTime();//获取系统时间
-        double xzb = mystarttime.msecsTo(mycurrenttime)/100;//获取横坐标，相对时间就是从0开始
-        ui->widget_plotwaves->graph(0)->addData(xzb,dataArry[n]);//添加数据1到曲线1
-        if(xzb>30)
+        ui->widget_plotwaves->graph(0)->addData(m,dataArry[n]);//添加数据1到曲线1
+        if(m>100)
         {
-            ui->widget_plotwaves->xAxis->setRange((double)qRound(xzb-30),xzb);//设定x轴的范围
+            ui->widget_plotwaves->xAxis->setRange((double)(m-100),m);//设定x轴的范围
         }
-        else ui->widget_plotwaves->xAxis->setRange(0,30);//设定x轴的范围
+        else ui->widget_plotwaves->xAxis->setRange(0,100);//设定x轴的范围
         ui->widget_plotwaves->replot();//每次画完曲线一定要更新显示
-        n+=1;
-        //qDebug()<<"主:"<<n;
+        n+=1;m++;
+        QCoreApplication::processEvents();
+
     }
      qDebug()<<"结束";
 }
 
-void MainWindow::showSpectrum(float* dataArry)
+void MainWindow::showSpectrum(float* dataArry,int N)
 {
 
     int n=0;
-
-    while(n<1024)
+    ui->widget_plotSpect->xAxis->setRange(0,30000);
+    ui->widget_plotSpect->xAxis->setTickStep(60000/N);//设置刻度间距5
+    while(n < N/2)
     {
-        mycurrenttime = QDateTime::currentDateTime();//获取系统时间
-        double xzb = mystarttime.msecsTo(mycurrenttime)/100;//获取横坐标，相对时间就是从0开始
-        ui->widget_plotSpect->graph(0)->addData(xzb,dataArry[n]);//添加数据1到曲线1
-        if(xzb>30)
-        {
-            ui->widget_plotSpect->xAxis->setRange((double)qRound(xzb-30),xzb);//设定x轴的范围
-        }
-        else ui->widget_plotSpect->xAxis->setRange(0,30);//设定x轴的范围
+
+        ui->widget_plotSpect->graph(0)->addData(n*60000/N,dataArry[n]);//添加数据1到曲线1
         ui->widget_plotSpect->replot();//每次画完曲线一定要更新显示
         n++;
+         QCoreApplication::processEvents();
 
     }
 
@@ -255,8 +249,8 @@ void MainWindow::setupPlot()
         ui->widget_plotwaves->xAxis->setLabel(QStringLiteral("时间/s"));//设置x坐标轴名称
         ui->widget_plotwaves->xAxis->setLabelColor(QColor(20,20,20));//设置x坐标轴名称颜色
         ui->widget_plotwaves->xAxis->setAutoTickStep(false);//设置是否自动分配刻度间距
-        ui->widget_plotwaves->xAxis->setTickStep(2);//设置刻度间距5
-        ui->widget_plotwaves->xAxis->setRange(0,30);//设定x轴的范围
+        ui->widget_plotwaves->xAxis->setTickStep(5);//设置刻度间距5
+        ui->widget_plotwaves->xAxis->setRange(0,100);//设定x轴的范围
 
         ui->widget_plotwaves->yAxis->setLabel(QStringLiteral("幅度"));//设置y坐标轴名称
         ui->widget_plotwaves->yAxis->setLabelColor(QColor(20,20,20));//设置y坐标轴名称颜色
@@ -274,8 +268,8 @@ void MainWindow::setupPlot()
         ui->widget_plotSpect->xAxis->setLabel(QStringLiteral("频率/Hz"));//设置x坐标轴名称
         ui->widget_plotSpect->xAxis->setLabelColor(QColor(20,20,20));//设置x坐标轴名称颜色
         ui->widget_plotSpect->xAxis->setAutoTickStep(true);//设置是否自动分配刻度间距
-        ui->widget_plotSpect->xAxis->setTickStep(2);//设置刻度间距5
-        ui->widget_plotSpect->xAxis->setRange(0,30);//设定x轴的范围
+        ui->widget_plotSpect->xAxis->setTickStep(1);//设置刻度间距5
+        ui->widget_plotSpect->xAxis->setRange(0,1024);//设定x轴的范围
 
         ui->widget_plotSpect->yAxis->setLabel(QStringLiteral("幅度"));//设置y坐标轴名称
         ui->widget_plotSpect->yAxis->setLabelColor(QColor(20,20,20));//设置y坐标轴名称颜色

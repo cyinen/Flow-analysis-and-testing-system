@@ -32,7 +32,7 @@ void FFT::doMyWork(float * data,int M)
         DATA[i] = 0;
     }
     fft(DATA, N);
-    emit sigDATA(dataSpec);
+    emit sigDATA(dataSpec,N);
 }
 
 void FFT::ReverseOrder(complex<float> *&A, int N)
