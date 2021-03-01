@@ -11,6 +11,7 @@
 #include <dataaquire.h>
 #include <fft.h>
 #include <vector>
+#include <qcustomplot.h>
 using namespace std;
 
 namespace Ui {
@@ -28,6 +29,7 @@ public:
     void showWaves(float * dataArry,int N);
     void showSpectrum(float * dataArry,int N);
     void setupPlot();//初始化
+    void saveData();
 
 private slots:
     void on_btn_search_port_clicked();
@@ -44,6 +46,14 @@ private slots:
 
     void on_pushButton_Playing_clicked();
 
+    void refresh();
+
+    void on_btn_clear_clicked();
+
+    void on_btn_save_clicked();
+
+    void on_pushButton_replay_clicked();
+
 private:
     Ui::MainWindow *ui;
     QSerialPort *myserial;//声明串口类，myserial是QSerialPort的实例
@@ -58,6 +68,11 @@ private:
 
     FFT *fft;
     QThread *fftthread;
+    QThread *tthread;
+    QTimer *timer;
+    QCPItemText *textLabel;
+
+    QVector<float> *data;
 
 signals:
     void sigWorking();

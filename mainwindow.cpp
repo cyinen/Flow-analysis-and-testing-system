@@ -4,6 +4,7 @@
 #include <dataaquire.h>
 #include <fft.h>
 #include <QList>
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -32,11 +33,14 @@ void MainWindow::init()
 
 
     setupPlot();
-    ui->groupBox->setAutoFillBackground(true);
-    ui->groupBox->setPalette(QPalette(Qt::gray));
+
     ui->groupBox_2->setAutoFillBackground(true);
     ui->groupBox_2->setPalette(QPalette(Qt::gray));
     ui->lineEdit_SetFFTNum->setText("1024");
+    ui->lineEdit_SetTheta->setText("50");
+    ui->lineEdit_SetFrequency->setText("50");
+    ui->lineEdit_SetTemper_T->setText("60");
+    ui->lineEdit_WorkFreq->setText("24.056");
     da = new DataAquire();
     // 2. 子线程类
     pthread = new QThread(this);
@@ -54,45 +58,65 @@ void MainWindow::init()
     void (FFT::*sigDATA)(float [],int) = &FFT::sigDATA;
     connect(fft,sigDATA,this,&MainWindow::showSpectrum);
 
+    //定时器 每30ms刷新下图表
+    timer = new  QTimer(this);
+    tthread = new QThread(this);
+    timer->moveToThread(tthread);
+    connect(timer,&QTimer::timeout,this,&MainWindow::refresh);
+
+    //保存数据
+    data = new QVector<float>();
 
 }
 
 void MainWindow::showWaves(float * dataArry,int N)
 {
-    qDebug()<<"开始处理";
+
     static double m=0;
     int n=0;
+
     while(n<N)
     {
+        //ui->widget_plotwaves->xAxis->setRange(0,m);
         ui->widget_plotwaves->graph(0)->addData(m,dataArry[n]);//添加数据1到曲线1
-        if(m>100)
+        data->append(dataArry[n]);
+        if(m>N)
         {
-            ui->widget_plotwaves->xAxis->setRange((double)(m-100),m);//设定x轴的范围
+            ui->widget_plotwaves->xAxis->setRange((double)(m-N),m);//设定x轴的范围
         }
-        else ui->widget_plotwaves->xAxis->setRange(0,100);//设定x轴的范围
-        ui->widget_plotwaves->replot();//每次画完曲线一定要更新显示
+        else ui->widget_plotwaves->xAxis->setRange(0,N);//设定x轴的范围
         n+=1;m++;
-        QCoreApplication::processEvents();
 
     }
-     qDebug()<<"结束";
+
+
+
 }
 
 void MainWindow::showSpectrum(float* dataArry,int N)
 {
 
     int n=0;
+    int index=0;float temp_data=dataArry[0];
+    ui->widget_plotSpect->graph(0)->removeData(0,30000);
     ui->widget_plotSpect->xAxis->setRange(0,30000);
     ui->widget_plotSpect->xAxis->setTickStep(60000/N);//设置刻度间距5
+    ui->widget_plotwaves->item();
     while(n < N/2)
     {
-
+        if(temp_data < dataArry[n]) {
+            index=n;
+            temp_data = dataArry[n];
+        }
         ui->widget_plotSpect->graph(0)->addData(n*60000/N,dataArry[n]);//添加数据1到曲线1
-        ui->widget_plotSpect->replot();//每次画完曲线一定要更新显示
         n++;
-         QCoreApplication::processEvents();
-
     }
+
+    QString str = QString("Max@f=%1Hz    Peak found！").arg(index*60000/N);
+    double v=index*60000/N;
+    v=(0.3*v)/(2*24.056*0.64278761);
+    ui->lineEdit_Velocity->setText(QString::number(v));
+    textLabel->setText(str);
 
 }
 
@@ -256,7 +280,7 @@ void MainWindow::setupPlot()
         ui->widget_plotwaves->yAxis->setLabelColor(QColor(20,20,20));//设置y坐标轴名称颜色
         ui->widget_plotwaves->yAxis->setAutoTickStep(false);//设置是否自动分配刻度间距
         ui->widget_plotwaves->yAxis->setTickStep(10);//设置刻度间距1
-        ui->widget_plotwaves->yAxis->setRange(-50,50);//设定y轴范围
+        ui->widget_plotwaves->yAxis->setRange(-20,20);//设定y轴范围
 
         ui->widget_plotwaves->axisRect()->setupFullAxesBox(true);//设置缩放，拖拽，设置图表的分类图标显示位置
         ui->widget_plotwaves->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom| QCP::iSelectAxes);
@@ -275,14 +299,60 @@ void MainWindow::setupPlot()
         ui->widget_plotSpect->yAxis->setLabelColor(QColor(20,20,20));//设置y坐标轴名称颜色
         ui->widget_plotSpect->yAxis->setAutoTickStep(true);//设置是否自动分配刻度间距
         ui->widget_plotSpect->yAxis->setTickStep(10);//设置刻度间距1
-        ui->widget_plotSpect->yAxis->setRange(0,1000);//设定y轴范围
+        ui->widget_plotSpect->yAxis->setRange(0,2000);//设定y轴范围
 
         ui->widget_plotSpect->axisRect()->setupFullAxesBox(true);//设置缩放，拖拽，设置图表的分类图标显示位置
         ui->widget_plotSpect->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom| QCP::iSelectAxes);
         ui->widget_plotSpect->axisRect()->insetLayout()->setInsetAlignment(0,Qt::AlignTop | Qt::AlignRight);//图例显示位置右上
         ui->widget_plotSpect->legend->setVisible(true);//显示图例
 
+        //添加文本框显示最大频率
+
+        textLabel = new QCPItemText(ui->widget_plotSpect);//在QCustomplot中新建文字框
+        textLabel->setPositionAlignment(Qt::AlignTop|Qt::AlignLeft);//文字布局：顶、左对齐
+        textLabel->position->setType(QCPItemPosition::ptAxisRectRatio);//位置类型（当前轴范围的比例为单位/实际坐标为单位）
+        textLabel->position->setCoords(0.05,0.05); //把文字框放在X轴的中间，Y轴的最顶部
+        textLabel->setText("Max@f=0Hz    Peak found！");
+        textLabel->setFont(QFont(font().family(), 12)); //字体大小
+        textLabel->setPen(QPen(Qt::white)); //字体颜色
+        textLabel->setPadding(QMargins(2,2,2,2));//文字距离边框几个像素
+        ui->widget_plotSpect->addItem(textLabel);
         ui->widget_plotSpect->replot();
+}
+
+void MainWindow::saveData()
+{
+    QString date ;
+    QString filename;
+    QDateTime time;
+    QDir dir;
+    time = QDateTime::currentDateTime();
+    date    = time.toString("yyyy-MM-dd");
+    filename = time.toString("hh:mm:ss");
+    filename = ".//data//" + date +"//"+ filename.split(":").at(0)+"-"+filename.split(":").at(1)+"-"+filename.split(":").at(2)+".txt";
+    if(!dir.exists(".//data"))
+    {
+        dir.mkdir(".//data");
+        date = ".//data//" + date;
+       if(!dir.exists(date))
+           dir.mkdir(date);
+    }
+
+
+    QFile file(filename);
+    if(!file.open(QIODevice::WriteOnly))
+    {
+        qDebug()<<"文件打开失败";
+        return;
+    }
+    int size = data->size();
+    for (int i=0;i<size;i++)
+    {
+        QString str =  QString::number(data->at(i))+"\n";
+        file.write(str.toUtf8());
+        qDebug()<<str;
+    }
+    file.close();
 }
 
 
@@ -344,11 +414,16 @@ void MainWindow::on_pushButton_Stop_clicked()
 
     fftthread->quit();
     fftthread->wait();
+
+    tthread->quit();
+    timer->stop();
+
+    saveData();
 }
 
 void MainWindow::on_pushButton_Playing_clicked()
 {
-    if(pthread->isRunning())
+    if(pthread->isRunning() || tthread->isRunning())
     {
         return;
     }
@@ -364,4 +439,66 @@ void MainWindow::on_pushButton_Playing_clicked()
     fftthread->start();
 
     mystarttime = QDateTime::currentDateTime();//图像横坐标初始值参考点，读取初始时间
+    tthread->start();
+    timer->start(30);
+}
+
+void MainWindow::refresh()
+{
+    ui->widget_plotwaves->replot();//每次画完曲线一定要更新显示
+    ui->widget_plotSpect->replot();//每次画完曲线一定要更新显示
+    //qDebug()<<"刷新数据";
+}
+
+void MainWindow::on_btn_clear_clicked()
+{
+    ui->widget_plotwaves->graph(0)->data()->clear();
+    data->clear();
+}
+
+void MainWindow::on_btn_save_clicked()
+{
+    saveData();
+}
+
+void MainWindow::on_pushButton_replay_clicked()
+{
+   ui->widget_plotwaves->graph(0)->data()->clear();
+   data->clear();
+   QString fileName = QFileDialog::getOpenFileName(
+           this,
+           tr("选择需要回放的文件."),
+           QDir::currentPath(),
+           tr("*.txt;;All files(*.*)"));
+   if (fileName.isEmpty()) {
+       QMessageBox::warning(this, "Warning!", "文件打开失败");
+       return;
+   }
+   QFile file(fileName);
+   if(!file.open(QIODevice::ReadOnly))
+   {
+       qDebug()<<"文件打开失败";
+   }
+
+   float da;char data[1024];
+   int m=0;
+
+   while(file.readLine(data,sizeof(data))!=-1)
+   {
+        da = QString::fromUtf8(data).simplified().toFloat();
+        ui->widget_plotwaves->graph(0)->addData(m,da);
+        if(m%200==0)
+        {
+
+            ui->widget_plotwaves->replot();
+        }
+        if(m>200)
+        {
+            ui->widget_plotwaves->xAxis->setRange((double)(m-200),m);//设定x轴的范围
+        }
+        else ui->widget_plotwaves->xAxis->setRange(0,200);//设定x轴的范围
+        m++;
+   }
+
+   file.close();
 }

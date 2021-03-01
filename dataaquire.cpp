@@ -38,7 +38,7 @@ void DataAquire::doMyWork()
     // 时钟参数
     AIParam.nSampleMode = USB3202_AI_SAMPMODE_CONTINUOUS;
     AIParam.nSampsPerChan = 1024;
-    AIParam.fSampleRate = 60000.0;
+    AIParam.fSampleRate = 100000.0;
     AIParam.nClockSource = USB3202_AI_CLKSRC_LOCAL;
     AIParam.bClockOutput = FALSE;
     AIParam.nReserved1 = 0;
@@ -116,9 +116,9 @@ void DataAquire::doMyWork()
 
 
            }
-            if(num == 64)
+            if(num == 1024)
             {
-                emit dataREADY(dataArry,64);
+                emit dataREADY(dataArry,1024);
                 num=0;
             }
 
@@ -128,7 +128,7 @@ void DataAquire::doMyWork()
 
             //printf("\n");
         }
-        QThread::sleep(2);
+        //QThread::sleep(2);
         if(isStop)
             break;
     }
