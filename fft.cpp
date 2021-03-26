@@ -19,7 +19,7 @@ FFT::FFT(QObject *parent) : QObject(parent)
 
 void FFT::doMyWork(float * data,int M)
 {
-    complex<float>* DATA = new complex<float>[1024];
+    complex<float>* DATA = new complex<float>[2048];
     for(int i=0;i<N;i++)
     {
         if (i < M)

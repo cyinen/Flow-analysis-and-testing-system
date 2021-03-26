@@ -25,9 +25,9 @@ signals:
 public slots:
     //void slotSetData(float* arry);
 private:
-    int N=1024;
-    float dataSpec[1024];
-    std::complex<float> Wn_table[1024][1024];
+    int N=1024*2;
+    float dataSpec[1024*2];
+    std::complex<float> Wn_table[2048][2048];
 };
 
 #endif // FFT_H

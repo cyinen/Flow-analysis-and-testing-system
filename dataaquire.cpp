@@ -21,11 +21,11 @@ void DataAquire::doMyWork()
     memset(&AIParam, 0, sizeof(USB3202_AI_PARAM));
 
     // 通道参数
-    AIParam.nSampChanCount = 4;
+    AIParam.nSampChanCount = 3;
     for (int nChannel = 0; nChannel < USB3202_AI_MAX_CHANNELS; nChannel++)
     {
         AIParam.CHParam[nChannel].nChannel = nChannel;
-        AIParam.CHParam[nChannel].nSampleGain = USB3202_AI_SAMPGAIN_1MULT;
+        AIParam.CHParam[nChannel].nSampleGain = USB3202_AI_SAMPGAIN_2MULT;
         AIParam.CHParam[nChannel].nRefGround = USB3202_AI_REFGND_RSE;
         AIParam.CHParam[nChannel].nReserved0 = 0;
         AIParam.CHParam[nChannel].nReserved1 = 0;
@@ -38,7 +38,7 @@ void DataAquire::doMyWork()
     // 时钟参数
     AIParam.nSampleMode = USB3202_AI_SAMPMODE_CONTINUOUS;
     AIParam.nSampsPerChan = 1024;
-    AIParam.fSampleRate = 100000.0;
+    AIParam.fSampleRate = Fs;
     AIParam.nClockSource = USB3202_AI_CLKSRC_LOCAL;
     AIParam.bClockOutput = FALSE;
     AIParam.nReserved1 = 0;
@@ -98,36 +98,39 @@ void DataAquire::doMyWork()
             //printf("Timeout nSampsPerChanRead=%d\n", nSampsPerChanRead);
             getch();
         }
-        for (U32 nIndex = 0; nIndex < 64; nIndex++)
+        for (U32 nIndex = 0; nIndex < nSampsPerChanRead; nIndex++)
         {
 
-            for (int nChannel = 0; nChannel < 4; nChannel++)
+            for (int nChannel = 0; nChannel < 3; nChannel++)
 
             {
-               double n = (double(20) / 65536)*nBinArray[nChannel + nIndex * 4]-10.0;
+               double n = (double(20) / 65536)*nBinArray[nChannel + nIndex * 3]-10.0;
                //qDebug()<< n << "  ";
                 //printf("AI%02d=%04d(Bin)  ", nChannel, nBinArray[nChannel + nIndex * 4]);
 
+               if(nChannel==0)
+               {
+                   dataArry1[nIndex]=n;
+                   //ui->line_V->setText(QString::number(dataI1));
+               }
                if(nChannel==1)
                {
-                   dataI1=n;
+                   dataArry2[nIndex]=n;
                    //ui->line_V->setText(QString::number(dataI1));
                }
 
 
            }
-            if(num == 1024)
-            {
-                emit dataREADY(dataArry,1024);
-                num=0;
-            }
 
-            dataArry[num]=dataI1;
-            num++;
+
+
             //qDebug()<<"子："<<num;
 
             //printf("\n");
         }
+        movmedian(dataArry1,1024,3);
+        movmedian(dataArry2,1024,3);
+        emit dataREADY(dataArry1,1024,dataArry2);
         //QThread::sleep(2);
         if(isStop)
             break;
@@ -160,5 +163,27 @@ void DataAquire::doMyWork()
 void DataAquire::setFlage(bool bl)
 {
     isStop = bl;
+}
+
+void DataAquire::setFs(int Fs)
+{
+    this->Fs = Fs;
+}
+
+
+float getMedian(float a,float b, float c)
+{
+   if(a>b) std::swap(a,b);
+   if(b>c) std::swap(b,c);
+   return b;
+}
+
+void DataAquire::movmedian(float *DATA, int length, int n)
+{
+    n=3;
+    for(int i=0;i<length-2;++i)
+    {
+        DATA[i] = getMedian(DATA[i],DATA[i+1],DATA[i+2]);
+    }
 }
 

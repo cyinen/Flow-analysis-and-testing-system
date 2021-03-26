@@ -26,10 +26,13 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void init();
-    void showWaves(float * dataArry,int N);
+    void showWaves(float * dataArry1,int N,float * dataArry2);
     void showSpectrum(float * dataArry,int N);
     void setupPlot();//初始化
     void saveData();
+    void setFreq();
+    void CrcCheck(unsigned char *buf, unsigned char len);
+    void writeCommand(unsigned char data[8]);
 
 private slots:
     void on_btn_search_port_clicked();
@@ -54,6 +57,9 @@ private slots:
 
     void on_pushButton_replay_clicked();
 
+    void on_pushButton_Stop_2_clicked();
+
+
 private:
     Ui::MainWindow *ui;
     QSerialPort *myserial;//声明串口类，myserial是QSerialPort的实例
@@ -70,9 +76,13 @@ private:
     QThread *fftthread;
     QThread *tthread;
     QTimer *timer;
+    QThread *Tthread;
+    QTimer *timerT;
     QCPItemText *textLabel;
 
-    QVector<float> *data;
+    QVector<float> *dataI;
+    QVector<float> *dataQ;
+    int Fs=2000;
 
 signals:
     void sigWorking();
